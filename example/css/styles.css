@@ -1,0 +1,22 @@
+/* 
+	FONT INFO:
+	Copyright sahwar 2010
+	“HaxrCorp 4089 Cyrillic AltGr” is based on “PIXELA CYR” by “sanyapolecat” (http://fontstruct.fontshop.com/fontstructors/sanyapolecat), which is based on “HaxrCorp 4089” by “sahwar” (http://fontstruct.fontshop.com/fontstructors/sahwar)
+*/
+@font-face {
+	font-family:"HaxrCorp 4089 Cyrillic AltGr Regular";src:url("../fonts/haxrcorp_4089_cyrillic_altgr.eot?") format("eot"),url("../fonts/haxrcorp_4089_cyrillic_altgr.woff") format("woff"),url("../fonts/haxrcorp_4089_cyrillic_altgr.ttf") format("truetype"),url("../fonts/haxrcorp_4089_cyrillic_altgr.svg#HaxrCorp-4089-Cyrillic-AltGr") format("svg");font-weight:normal;font-style:normal;
+}
+h1, p {
+	font-family:'HaxrCorp 4089 Cyrillic AltGr Regular', courier;
+}
+h1 {
+	margin-top: 0;
+	font-size: 4em;
+}
+p {
+	font-size: 2em;
+}
+#SCJS_showcode {
+	padding: 0 5px;
+	background-color: #FF0000
+}
