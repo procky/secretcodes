@@ -5,6 +5,8 @@
 
 **DEPENDENCIES:** none!
 
+[DEMO](http://procky.github.io/secretcodes/)
+
 **WARNING:** This is NOT a secure way of adding a password and is purely for fun. This source code and your chosen "secret codes" are publicly viewable.
 
 
