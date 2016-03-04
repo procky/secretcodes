@@ -16,6 +16,7 @@ function konamiCodeCallback() {
 SCJS.Manager.addSecretCode('up up down down left right left right b a enter', konamiCodeCallback);
 SCJS.Manager.addSecretCode('s e c r e t', function() { alert('How did you find this?'); } );
 SCJS.Manager.addSecretCode('q w e r t y', function() { alert('Trying every key?'); } );
+SCJS.Manager.addSecretCode('g i t h u b', function() { alert('Did you mean to type in the address bar?'); } );
 
 var domReady = function(ready) {
 	if(/in/.test(document.readyState)) {
