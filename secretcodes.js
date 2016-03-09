@@ -5,6 +5,7 @@ secretcodes.js v1.0
 	AUTHOR: Adam Wicks
 	LICENCE: MIT
 	DEPENDENCIES: none!
+	LINK: https://github.com/procky/secretcodes
 WARNING: This is NOT a secure way of adding a password and is purely for fun. This source code and your chosen "secret codes" are publicly viewable.
 */
 
