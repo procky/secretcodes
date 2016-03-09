@@ -13,9 +13,9 @@ WARNING: This is not a secure way of adding a password and is purely for fun. Th
 function konamiCodeCallback() {
 	alert('Konami code entered');
 }
-SCJS.Manager.addSecretCode('up up down down left right left right b a enter', konamiCodeCallback);
-SCJS.Manager.addSecretCode('s e c r e t', function() { alert('How did you find this?'); } );
-SCJS.Manager.addSecretCode('q w e r t y', function() { alert('Trying every key?'); } );
+secretcodes.addSecretCode('up up down down left right left right b a enter', konamiCodeCallback);
+secretcodes.addSecretCode('s e c r e t', function() { alert('How did you find this?'); } );
+secretcodes.addSecretCode('q w e r t y', function() { alert('Trying every key?'); } );
 
 var domReady = function(ready) {
 	if(/in/.test(document.readyState)) {
@@ -25,7 +25,7 @@ var domReady = function(ready) {
 };
 function pageLoaded() {
 	function showGuessing() {
-		document.getElementById('SCJS_showcode').innerHTML = SCJS.Manager.getCurrentGuess();
+		document.getElementById('SCJS_showcode').innerHTML = secretcodes.getCurrentGuess();
 	}
 
 	var el = document;

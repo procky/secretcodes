@@ -1,25 +1,16 @@
 /*
-secretcodes.js v1.0
+secretcodes.js v1.0.1
 	Adds secret codes, like videogame cheat codes (e.g. Konami code), to the web browser.
 	You supply the codes to be performed and a callback function for each code when they are input.
 	AUTHOR: Adam Wicks
 	LICENCE: MIT
 	DEPENDENCIES: none!
+	LINK: https://github.com/procky/secretcodes
 WARNING: This is NOT a secure way of adding a password and is purely for fun. This source code and your chosen "secret codes" are publicly viewable.
-
-
-Obfuscator/minifiers:
-http://marijnhaverbeke.nl/uglifyjs
-http://closure-compiler.appspot.com/home	-	https://developers.google.com/closure/compiler/
-http://www.crockford.com/javascript/jsmin.html
-http://refresh-sf.com/yui/
-http://dean.edwards.name/packer/
-http://www.obfuscriptor.com/
-http://www.javascriptobfuscator.com/
 */
 
-var SCJS = {};
-SCJS.Manager = (function() {
+var secretcodes = {};
+secretcodes = (function() {
 	"use strict";
 
 	// If you wish to expand the dictionary you can find the number relating to the key here: https://developer.mozilla.org/en-US/docs/DOM/KeyboardEvent
