@@ -1,38 +1,640 @@
 <!DOCTYPE html>
-<html>
-  <head>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
-    <title>secretcodes.js demo</title>
-    <link rel="stylesheet" type="text/css" href="example/style/styles.css" />
-  </head>
-  <body>
-    <h1>secretcodes.js demo</h1>
-    <p>Type out 'qwerty' or the konami code. hint: start = return/enter key</p>
-    <p>Your input as you type:&nbsp;<span id="SCJS_showcode"></span></p>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secretcodes.js demo</title>
+    <style>
+        /* 
+            FONT INFO:
+            Copyright sahwar 2010
+            �HaxrCorp 4089 Cyrillic AltGr� is based on �PIXELA CYR� by �sanyapolecat� (http://fontstruct.fontshop.com/fontstructors/sanyapolecat), which is based on �HaxrCorp 4089� by �sahwar� (http://fontstruct.fontshop.com/fontstructors/sahwar)
+        */
+        @font-face {
+            font-family:"HaxrCorp 4089 Cyrillic AltGr Regular";src:url("example/font/haxrcorp_4089_cyrillic_altgr.eot?") format("eot"),url("example/font/haxrcorp_4089_cyrillic_altgr.woff") format("woff"),url("example/font/haxrcorp_4089_cyrillic_altgr.ttf") format("truetype"),url("example/font/haxrcorp_4089_cyrillic_altgr.svg#HaxrCorp-4089-Cyrillic-AltGr") format("svg");font-weight:normal;font-style:normal;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #1a1a2e, #16213e);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        h1 {
+            font-family: 'HaxrCorp 4089 Cyrillic AltGr Regular', 'Courier New', monospace;
+            font-size: 2.5rem;
+            color: #00ff00;
+            padding-left: 20px;
+            
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .minimal {
+            position: absolute;
+            bottom: 0px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            max-width: 320px;
+        } 
+        
+        #debug {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 10px;
+            border: 1px solid #ffff00;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            #debug {
+                display: none; /* Hide debug on mobile to save space */
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Secretcodes.js demo</h1>
+    <p class="minimal"><a href="minimal-demo.html">Minimal Demo</a></p>
+    <div id="container"></div>
+
+    <!-- <div id="debug">
+        Debug Info:<br>
+        <span id="debugText">Initializing...</span>
+    </div> -->
 
     <script type="module">
-      import SecretCodeManager from './secretcodes.min.js';
-      
-      const secretManager = new SecretCodeManager(document);
-      
-      secretManager.addSecretCode('up up down down left right left right b a enter', () => {
-        alert('Konami code entered');
-      });
+        // Import the SecretCodeManager
+        import SecretCodeManager from '../secretcodes.min.js';
+        
+        // Initialize the manager
+        const secretManager = new SecretCodeManager(document);
+        
+        // Add secret codes
+        secretManager.addSecretCode('up up down down left right left right b a enter', () => {
+          alert('Konami code entered');
+        });
+  
+        secretManager.addSecretCode('s e c r e t', () => {
+          alert('How did you find this?');
+        });
+  
+        secretManager.addSecretCode('q w e r t y', () => {
+          alert('Trying every key?');
+        });
+  
+        // Update the UI to show the current key sequence
+        document.addEventListener('keyup', () => {
+          const currentGuess = secretManager.getCurrentGuess();
+        });
 
-      secretManager.addSecretCode('s e c r e t', () => {
-        alert('How did you find this?');
-      });
+        // Add event listeners
+        document.addEventListener('keyup', () => {
+            updateScreenTexture();
+        });
 
-      secretManager.addSecretCode('q w e r t y', () => {
-        alert('Trying every key?');
-      });
+        let scene, camera, renderer, tv, screenMesh, textTexture, canvas2d, ctx;
 
-      // Update the UI to show the current key sequence
-      document.addEventListener('keyup', () => {
-        const currentGuess = secretManager.getCurrentGuess();
-        document.getElementById('SCJS_showcode').textContent = currentGuess;
-      });
+        let consoleDebug = false;
+        let debugEl = document.getElementById('debugText');
+
+        let cameraDistance = 10;
+        let minCameraDistance = 8;
+        let maxCameraDistance = 20;
+
+        function debug(msg) {
+            if (consoleDebug) console.log(msg);
+            if (debugEl) {
+                debugEl.innerHTML += '<br>' + msg;
+                // Keep debug manageable
+                const lines = debugEl.innerHTML.split('<br>');
+                if (lines.length > 15) {
+                    debugEl.innerHTML = lines.slice(-10).join('<br>');
+                }
+            }
+        }
+
+        function calculateOptimalCameraDistance() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const isMobile = window.innerWidth <= 768;
+            
+            // Simple responsive distance calculation
+            let distance;
+            
+            if (isMobile) {
+                distance = 10; // Mobile
+            } else if (aspect < 1) {
+                distance = 8; // Portrait mode
+            } else if (aspect > 1.5) {
+                distance = 8; // Wide screens
+            } else {
+                distance = 8; // Standard screens
+            }
+            
+            debug(`Aspect: ${aspect.toFixed(2)}, Distance: ${distance}`);
+            return distance;
+        }
+
+        function init() {
+            debug('Starting initialization...');
+            
+            try {
+                // Scene setup
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x0a0a0a);
+                document.getElementById('container').appendChild(renderer.domElement);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.0;
+
+                // Create 2D canvas for text rendering
+                canvas2d = document.createElement('canvas');
+                canvas2d.width = 512;
+                canvas2d.height = 384;
+                ctx = canvas2d.getContext('2d');
+                debug('Canvas created: ' + canvas2d.width + 'x' + canvas2d.height);
+
+                // Test canvas drawing
+                testCanvas();
+
+                // Create the CRT TV
+                createCRTTV();
+                debug('TV model created');
+                
+                // Create screen
+                createScreen();
+                debug('Screen created');
+
+                // Lighting
+                setupLighting();
+                debug('Lighting setup complete');
+                
+                // Set initial camera position
+                cameraDistance = calculateOptimalCameraDistance();
+                camera.position.set(4, targetCameraY, cameraDistance);
+                camera.lookAt(0, 0, 0);
+                debug(`Initial camera distance: ${cameraDistance}`);
+                debug(`Camera positioned at: ${camera.position.x}, ${camera.position.y}, ${camera.position.z}`);
+
+                // Initial screen content
+                updateScreenTexture();
+                debug('Initial screen update complete');
+                
+                // Start animation loop
+                animate();
+                debug('Animation started');
+
+            } catch (error) {
+                debug('Error: ' + error.message);
+                console.error(error);
+            }
+        }
+
+        function updateCameraPosition() {
+            const angle = mouseX * 0.3;
+            camera.position.set(
+                Math.sin(angle) * cameraDistance,
+                targetCameraY,
+                Math.cos(angle) * cameraDistance
+            );
+            camera.lookAt(0, 0, 0);
+            debug(`Camera at: ${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)}`);
+        }
+
+        function testCanvas() {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, 100, 100);
+            ctx.fillStyle = '#00ff00';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('TEST', 50, 50);
+            debug('Canvas test drawn');
+        }
+
+        function createCRTTV() {
+            const tvGroup = new THREE.Group();
+            
+            // Main TV body - rounded corners using multiple geometries
+            const tvGeometry = new THREE.BoxGeometry(7, 5.5, 4);
+            const tvMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x2a2a2a,
+                shininess: 30,
+                specular: 0x111111
+            });
+            const tvBody = new THREE.Mesh(tvGeometry, tvMaterial);
+            tvBody.castShadow = true;
+            tvBody.receiveShadow = true;
+            tvGroup.add(tvBody);
+
+            // Screen bezel (recessed area around screen)
+            const bezelGeometry = new THREE.BoxGeometry(4.8, 3.8, 0.3);
+            const bezelMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x0a0a0a,
+                shininess: 5
+            });
+            const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+            bezel.position.z = 1.85;
+            tvGroup.add(bezel);
+
+            // Control panel on the right side
+            const controlPanelGeo = new THREE.BoxGeometry(1.5, 4, 0.5);
+            const controlPanelMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const controlPanel = new THREE.Mesh(controlPanelGeo, controlPanelMat);
+            controlPanel.position.set(3.2, 0, 1.7);
+            tvGroup.add(controlPanel);
+
+            // Volume and channel knobs
+            for(let i = 0; i < 4; i++) {
+                const knobGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.15, 16);
+                const knobMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+                const knob = new THREE.Mesh(knobGeometry, knobMaterial);
+                knob.position.set(3.0, 1.2 - i * 0.6, 2);
+                knob.rotation.x = Math.PI / 2;
+                tvGroup.add(knob);
+
+                // Knob indicators
+                const indicatorGeo = new THREE.BoxGeometry(0.05, 0.3, 0.02);
+                const indicatorMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
+                indicator.position.set(3.0, 1.2 - i * 0.6, 2.1);
+                if(i === 2) {
+                    indicator.rotation.z = -0.3;
+                }
+                tvGroup.add(indicator);
+            }
+
+            // Power button
+            const powerButtonGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
+            const powerButtonMat = new THREE.MeshPhongMaterial({ color: 0x660000 });
+            const powerButton = new THREE.Mesh(powerButtonGeo, powerButtonMat);
+            powerButton.position.set(3.0, -2, 2);
+            powerButton.rotation.x = Math.PI / 2;
+            tvGroup.add(powerButton);
+
+            // Speaker grille (left side)
+            const speakerGeo = new THREE.BoxGeometry(0.6, 3.2, 0.1);
+            const speakerMat = new THREE.MeshPhongMaterial({ color: 0x1a1a1a });
+            const speaker = new THREE.Mesh(speakerGeo, speakerMat);
+            speaker.position.set(-3, 0, 2.1);
+            tvGroup.add(speaker);
+
+            // Speaker holes
+            for(let i = 0; i < 12; i++) {
+                for(let j = 0; j < 8; j++) {
+                    const holeGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8);
+                    const holeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+                    hole.position.set(-2.9, -1.4 + i * 0.25, 0.4 + j * 0.25);
+                    hole.rotation.z = Math.PI / 2;
+                    tvGroup.add(hole);
+                }
+            }
+
+            // TV legs/stand
+            const legGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1, 16);
+            const legMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-2.5, -3.25, 0);
+            tvGroup.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(2.5, -3.25, 0);
+            tvGroup.add(rightLeg);
+
+            // Brand logo
+            const logoGeometry = new THREE.PlaneGeometry(1.2, 0.3);
+            const logoMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x666666,
+                transparent: true,
+                opacity: 0.8
+            });
+            const logo = new THREE.Mesh(logoGeometry, logoMaterial);
+            logo.position.set(0, 2.2, 2.01);
+            tvGroup.add(logo);
+
+            // Antenna
+            const antennaBaseGeo = new THREE.CylinderGeometry(0.1, 0.15, 0.3, 16);
+            const antennaBaseMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+            const antennaBase = new THREE.Mesh(antennaBaseGeo, antennaBaseMat);
+            antennaBase.position.set(-2, 2.75, 1);
+            tvGroup.add(antennaBase);
+
+            // Antenna rods
+            const antennaGeo = new THREE.CylinderGeometry(0.02, 0.02, 2, 8);
+            const antennaMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
+            
+            const antenna1 = new THREE.Mesh(antennaGeo, antennaMat);
+            antenna1.position.set(-2.5, 3.7, 1);
+            antenna1.rotation.z = Math.PI / 6;
+            tvGroup.add(antenna1);
+            
+            const antenna2 = new THREE.Mesh(antennaGeo, antennaMat);
+            antenna2.position.set(-1.5, 3.7, 1);
+            antenna2.rotation.z = -Math.PI / 6;
+            tvGroup.add(antenna2);
+
+            // Ventilation grilles on top
+            for(let i = 0; i < 8; i++) {
+                const grillGeo = new THREE.BoxGeometry(0.6, 0.05, 0.1);
+                const grillMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+                const grill = new THREE.Mesh(grillGeo, grillMat);
+                grill.position.set(-2.1 + i * 0.6, 2.75, -1.5);
+                tvGroup.add(grill);
+            }
+
+            tv = tvGroup;
+            scene.add(tv);
+            debug('Detailed 3D TV model created');
+        }
+
+        function createScreen() {
+            // Create curved screen geometry for authentic CRT look
+            const screenGeometry = new THREE.PlaneGeometry(4.4, 3.4, 32, 24);
+            
+            // Apply curvature to simulate CRT screen bulge
+            const vertices = screenGeometry.attributes.position.array;
+            for(let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const y = vertices[i + 1];
+                const distanceFromCenter = Math.sqrt(x * x + y * y);
+                vertices[i + 2] = distanceFromCenter * 0.08; // Curve outward (CRT bulge)
+            }
+            screenGeometry.attributes.position.needsUpdate = true;
+            screenGeometry.computeVertexNormals();
+            
+            // Create texture from canvas
+            textTexture = new THREE.CanvasTexture(canvas2d);
+            textTexture.flipY = true;
+            debug('Curved screen texture created');
+
+            // CRT Screen material with shader effects
+            const screenMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    tDiffuse: { value: textTexture },
+                    time: { value: 0 },
+                    scanlines: { value: 1.0 },
+                    brightness: { value: 1.2 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform float time;
+                    uniform float scanlines;
+                    uniform float brightness;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        vec2 uv = vUv;
+                        
+                        // Sample the texture
+                        vec3 color = texture2D(tDiffuse, uv).rgb;
+                        
+                        // CRT scanlines
+                        float scanline = sin(uv.y * 600.0) * 0.04;
+                        color.rgb -= scanline * scanlines;
+                        
+                        // Phosphor glow effect
+                        color.g += 0.1;
+                        
+                        // Brightness adjustment
+                        color *= brightness;
+                        
+                        // Vignette effect
+                        float vignette = distance(uv, vec2(0.5));
+                        vignette = 1.0 - vignette * 0.3;
+                        color *= vignette;
+                        
+                        // Subtle flicker
+                        color *= 0.98 + 0.02 * sin(time * 120.0);
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            });
+
+            screenMesh = new THREE.Mesh(screenGeometry, screenMaterial);
+            screenMesh.position.z = 2.0; // In front of bezel
+            tv.add(screenMesh);
+            debug('Curved CRT screen with effects added');
+        }
+
+        function setupLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+
+            // Main directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(8, 8, 6);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -10;
+            directionalLight.shadow.camera.right = 10;
+            directionalLight.shadow.camera.top = 10;
+            directionalLight.shadow.camera.bottom = -10;
+            scene.add(directionalLight);
+
+            // Screen glow light
+            const screenLight = new THREE.PointLight(0x00ff00, 0.6, 15);
+            screenLight.position.set(0, 0, 4);
+            scene.add(screenLight);
+
+            // Warm room light
+            const roomLight = new THREE.PointLight(0xff8844, 0.3, 20);
+            roomLight.position.set(-8, 5, 8);
+            scene.add(roomLight);
+
+            debug('Advanced lighting with shadows added');
+        }
+
+        function updateScreenTexture() {
+            debug('Updating screen texture...');
+            let introText = 'secretcodes.js demo\nType out \'qwerty\' or the Konami code.\nhint: start = return/enter key\nYour input as you type:\n';
+            let currentGuess = secretManager.getCurrentGuess();
+            currentGuess = currentGuess.replace(/ /g, '\n');
+            introText += currentGuess;
+            const text = introText.toUpperCase();
+            
+            // Clear canvas with dark background
+            ctx.fillStyle = '#001100';
+            ctx.fillRect(0, 0, canvas2d.width, canvas2d.height);
+            
+            // Draw screen text
+            ctx.shadowColor = '#00ff00';
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = '#00ff00';
+            ctx.font = '24px "HaxrCorp 4089 Cyrillic AltGr Regular"';//'bold 18px Courier New';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            
+            // Split text into lines
+            const lines = text.split('\n');
+            const lineHeight = 24;
+            
+            debug('Drawing ' + lines.length + ' lines of text');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const y = 20 + i * lineHeight;
+                ctx.fillText(line, 30, y);
+            }
+            
+            // Add blinking cursor
+            const cursorLine = lines.length - 1;
+            const lastLine = lines[cursorLine] || '';
+            const cursorX = 33 + ctx.measureText(lastLine).width;
+            const cursorY = 23 + cursorLine * lineHeight;
+            
+            if (Math.floor(Date.now() / 500) % 2) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(cursorX, cursorY, 12, 20);
+            }
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+            
+            // Force texture update
+            textTexture.needsUpdate = true;
+            debug('Texture updated with glow effects');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update shader time for CRT effects
+            if(screenMesh && screenMesh.material.uniforms) {
+                screenMesh.material.uniforms.time.value += 0.016;
+            }
+            
+            // Subtle TV movement/vibration
+            if(tv) {
+                tv.rotation.y = Math.sin(Date.now() * 0.0003) * 0.01;
+                tv.position.y = Math.sin(Date.now() * 0.002) * 0.005;
+            }
+            
+            // Update camera position smoothly
+            updateCamera();
+            
+            renderer.render(scene, camera);
+        }
+
+        // Control functions
+        function clearScreen() {
+            document.getElementById('textInput').value = '';
+            updateScreenTexture();
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            cameraDistance = calculateOptimalCameraDistance();
+            debug('Window resized, new camera distance: ' + cameraDistance.toFixed(2));
+        }
+
+        // Mouse controls for camera orbiting
+        let mouseX = 0, mouseY = 0;
+        let targetCameraY = 0;
+        
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - window.innerWidth / 2) / (window.innerWidth / 2);
+            mouseY = (event.clientY - window.innerHeight / 2) / (window.innerHeight / 2);
+            
+            targetCameraY = 2 - mouseY * 2; // Vertical movement
+        });
+        
+        // Touch controls for mobile
+        let touchStartX = 0, touchStartY = 0;
+        
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+            }
+        });
+        
+        document.addEventListener('touchmove', (event) => {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+                const touchX = event.touches[0].clientX;
+                const touchY = event.touches[0].clientY;
+                
+                const deltaX = (touchX - touchStartX) / window.innerWidth;
+                const deltaY = (touchY - touchStartY) / window.innerHeight;
+                
+                mouseX += deltaX * 2;
+                targetCameraY -= deltaY * 4;
+                
+                // Clamp values
+                mouseX = Math.max(-1, Math.min(1, mouseX));
+                targetCameraY = Math.max(-2, Math.min(6, targetCameraY));
+                
+                touchStartX = touchX;
+                touchStartY = touchY;
+            }
+        });
+        
+        // Smooth camera movement
+        function updateCamera() {
+            const angle = mouseX * Math.PI * 0.3; // Limit rotation range
+            
+            camera.position.x += (Math.sin(angle) * cameraDistance - camera.position.x) * 0.05;
+            camera.position.y += (targetCameraY - camera.position.y) * 0.05;
+            camera.position.z += (Math.cos(angle) * cameraDistance - camera.position.z) * 0.05;
+            
+            camera.lookAt(0, 0, 0);
+        }
+
+        // API for external control
+        window.setCRTText = function(text) {
+            document.getElementById('textInput').value = text;
+            updateScreenTexture();
+        };
+
+        window.appendCRTText = function(text) {
+            const current = document.getElementById('textInput').value;
+            document.getElementById('textInput').value = current + '\n' + text;
+            updateScreenTexture();
+        };
+
+        // Add resize event listener
+        window.addEventListener('resize', onWindowResize);
+
+        // Initialize everything
+        debug('Starting app...');
+        init();
     </script>
-  </body>
+    <script src="example/script/three.min.js"></script>
+</body>
 </html>

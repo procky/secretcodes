@@ -1,5 +1,6 @@
-# example index.html
+# demo pages
 + index.html
++ minimal-demo.html
 
 # Include the contents of the example directory
 + example/***
