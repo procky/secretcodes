@@ -17,7 +17,9 @@
 **VERSION:** 2.0.0
 **DEPENDENCIES:** None!
 
-[![Demo](https://img.shields.io/badge/DEMO-Live%20Demo-blue)](http://procky.github.io/secretcodes/)
+[![Demo](https://img.shields.io/badge/DEMO-3D%20Demo-blue)](http://procky.github.io/secretcodes/)
+
+[![Demo](https://img.shields.io/badge/DEMO-Minimal%20Demo-blue)](http://procky.github.io/secretcodes/minimal-demo.html)
 
 **WARNING:** This is NOT a secure way of adding a password and is purely for fun. This source code and your chosen "secret codes" are publicly viewable.
 
