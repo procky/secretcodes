@@ -1,176 +1,258 @@
-/*
-secretcodes.js v1.0
-	Adds secret codes, like videogame cheat codes (e.g. Konami code), to the web browser.
-	You supply the codes to be performed and a callback function for each code when they are input.
-	AUTHOR: Adam Wicks
-	LICENCE: MIT
-	DEPENDENCIES: none!
-	LINK: https://github.com/procky/secretcodes
-WARNING: This is NOT a secure way of adding a password and is purely for fun. This source code and your chosen "secret codes" are publicly viewable.
-*/
+/**
+ * SecretCodes: Secret codes, like videogame cheat codes (e.g. Konami code), in the web browser.
+ *
+ * @author Adam Wicks
+ * @license MIT
+ * @version 2.0.0
+ */
 
-var SCJS = {};
-SCJS.Manager = (function() {
-	"use strict";
+export default class SecretCodeManager {
+  #targetElement;
+  #secretCodes = [];
+  #keyHistory = [];
+  #keyHistoryLimit = 100;
+  #maxInputBufferSize = 0;
+  #boundKeyDownHandler;
+  #currentGuess = '';
 
-	// If you wish to expand the dictionary you can find the number relating to the key here: https://developer.mozilla.org/en-US/docs/DOM/KeyboardEvent
-	// Some keys cross browser vary. Keys that modify like shift+a are not supported currently. Here might help: http://unixpapa.com/js/key.html
-	var keyValueDictionary = {
-		8: "backspace",
-		9: "tab",
-		12: "num",
-		13: "enter",
-		16: "shift",
-		17: "ctrl",
-		18: "alt",
-		19: "pause",
-		20: "caps",
-		27: "escape",
-		32: "space",
-		33: "pageup",
-		34: "pagedown",
-		35: "end",
-		36: "home",
-		37: "left",
-		38: "up",
-		39: "right",
-		40: "down",
-		44: "print",
-		45: "insert",
-		46: "delete",
-		48: "0",
-		49: "1",
-		50: "2",
-		51: "3",
-		52: "4",
-		53: "5",
-		54: "6",
-		55: "7",
-		56: "8",
-		57: "9",
-		65: "a",
-		66: "b",
-		67: "c",
-		68: "d",
-		69: "e",
-		70: "f",
-		71: "g",
-		72: "h",
-		73: "i",
-		74: "j",
-		75: "k",
-		76: "l",
-		77: "m",
-		78: "n",
-		79: "o",
-		80: "p",
-		81: "q",
-		82: "r",
-		83: "s",
-		84: "t",
-		85: "u",
-		86: "v",
-		87: "w",
-		88: "x",
-		89: "y",
-		90: "z",
-		96: "num_0",
-		97: "num_1",
-		98: "num_2",
-		99: "num_3",
-		100: "num_4",
-		101: "num_5",
-		102: "num_6",
-		103: "num_7",
-		104: "num_8",
-		105: "num_9",
-		106: "num_multiply",
-		107: "num_add",
-		108: "num_enter",
-		109: "num_subtract",
-		110: "num_decimal",
-		111: "num_divide",
-		112: "f1",
-		113: "f2",
-		114: "f3",
-		115: "f4",
-		116: "f5",
-		117: "f6",
-		118: "f7",
-		119: "f8",
-		120: "f9",
-		121: "f10",
-		122: "f11",
-		123: "f12",
-		124: "print",
-		144: "num",
-		145: "scroll",
-		186: ";",
-		187: "=",
-		188: ",",
-		189: "-",
-		190: ".",
-		191: "/",
-		192: "`",
-		219: "[",
-		220: "\\",
-		221: "]",
-		222: "\'"
-	};
-	var secretCodeGuess = [];
-	var secretCodeGuessMaxLength = 0;
-	var secretCode = [];
+  static get keyNameMap() {
+    return new Map([
+      ['backspace', 'Backspace'],
+      ['tab', 'Tab'],
+      ['enter', 'Enter'],
+      ['shift', 'Shift'],
+      ['ctrl', 'Control'],
+      ['alt', 'Alt'],
+      ['escape', 'Escape'],
+      ['space', ' '],
+      ['pageup', 'PageUp'],
+      ['pagedown', 'PageDown'],
+      ['end', 'End'],
+      ['home', 'Home'],
+      ['left', 'ArrowLeft'],
+      ['up', 'ArrowUp'],
+      ['right', 'ArrowRight'],
+      ['down', 'ArrowDown'],
+      ['insert', 'Insert'],
+      ['delete', 'Delete'],
+      ...Array.from({ length: 10 }, (_, i) => [String(i), String(i)]),
+      ...'abcdefghijklmnopqrstuvwxyz'.split('').map((c) => [c, c.toLowerCase()]),
+    ]);
+  }
 
-	var keyDownGuess = function(event) {
-		var charCode = (event.which) ? event.which : event.keyCode;
-		var guessKey = (keyValueDictionary[charCode]) ? keyValueDictionary[charCode] : 'unidentified';
-		var i = 0;
-		var secretCodeGuessStr = '';
-		var matchFoundIndexPosition = '';
+  /**
+   * Normalise a single key name
+   * @private
+   * @param {string} key - The key to normalise
+   * @returns {string} The normalised key
+   */
+  static #normaliseKey(key) {
+    if (key.length === 1) {
+      return key.toLowerCase();
+    }
+    // Check if it's a known key name
+    const normalised = SecretCodeManager.keyNameMap.get(key.toLowerCase());
+    if (normalised) {
+      return normalised;
+    }
+    // For multi-word keys, try to normalise each word
+    if (key.includes(' ')) {
+      return key
+        .split(' ')
+        .map((k) => this.#normaliseKey(k))
+        .join(' ');
+    }
+    // Unknown key
+    throw new Error(
+      `Unrecognised key: '${key}'. Only single characters and standard key names are allowed.`
+    );
+  }
 
-		secretCodeGuess.push(guessKey);
+  /**
+   * Create a new SecretCodeManager
+   * @param {HTMLElement} [targetElement=document] - The element to listen for key events on
+   */
+  constructor(targetElement = document) {
+    if (!targetElement || !(targetElement instanceof HTMLElement || targetElement === document)) {
+      throw new Error('Target must be an HTMLElement or document');
+    }
 
-		// Have any codes been input?
-		secretCodeGuessStr = secretCodeGuess.join(' ');
-		for(i = 0; i < secretCode.length; i++) {
-			matchFoundIndexPosition = secretCodeGuessStr.length - secretCode[i].code.length;
-			if(secretCodeGuessStr.lastIndexOf(secretCode[i].code) === matchFoundIndexPosition && matchFoundIndexPosition >= 0) {
-				secretCode[i].callback();
-			}
-		}
+    this.#targetElement = targetElement;
+    this.#boundKeyDownHandler = this.#handleKeyDown.bind(this);
+    this.#targetElement.addEventListener('keydown', this.#boundKeyDownHandler);
+  }
 
-		// Keep the guess array as small as possible
-		if(secretCodeGuess.length >= secretCodeGuessMaxLength) {
-			secretCodeGuess.splice(0, 1);
-		}
-	};
+  /**
+   * Add a new secret code sequence
+   * @param {string} code - The secret code sequence (e.g., 'a b c')
+   * @param {Function} callback - Function to call when code is entered
+   * @throws {Error} If code is invalid or callback is not a function
+   */
+  addSecretCode(code, callback) {
+    if (typeof code !== 'string' || code.trim() === '') {
+      throw new Error('Code string must be a non-empty string.');
+    }
 
-	var domReady = function(ready) {
-		if(/in/.test(document.readyState)) {
-			return setTimeout(function() { return domReady(ready); }, 9);
-		}
-		return ready();
-	};
+    if (typeof callback !== 'function') {
+      throw new Error('Callback must be a function.');
+    }
 
-	var init = function() {
-		var el = document;
-		if(el.addEventListener) {
-			el.addEventListener('keydown', keyDownGuess, false);
-		} else if(el.attachEvent) {
-			el.attachEvent('onkeydown', keyDownGuess);
-		}
-	};
-	domReady(init);
+    // Validate
+    const validation = this.isValidCode(code);
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Invalid code');
+    }
 
-	return {
-		addSecretCode: function(codeToSet, callbackWhenPasswordInputted) {
-			var codeArr = {code: codeToSet, callback: callbackWhenPasswordInputted};
-			secretCode.push(codeArr);
+    // Normalise
+    const codeArray = code
+      .split(' ')
+      .filter((key) => key.trim() !== '')
+      .map((key) => SecretCodeManager.#normaliseKey(key));
 
-			secretCodeGuessMaxLength = secretCode.reduce(function(a, b) { return a.code.split(' ').length > b.code.split(' ').length ? a : b; }).code.split(' ').length;
-		},
-		getCurrentGuess: function() {
-			return secretCodeGuess.join(' ');
-		}
-	};
-})();
+    this.#maxInputBufferSize = Math.max(this.#maxInputBufferSize, codeArray.length);
+
+    this.#secretCodes.push({ code: codeArray, callback });
+  }
+
+  /**
+   * Remove a secret code sequence
+   * @param {string} code - The secret code sequence to remove
+   * @returns {boolean} true if code was removed, false if not found
+   */
+  removeSecretCode(code) {
+    if (typeof code !== 'string' || code.trim() === '') {
+      return false;
+    }
+
+    // Validate
+    const validation = this.isValidCode(code);
+    if (!validation.isValid) {
+      return false;
+    }
+
+    // Normalise
+    const codeToRemove = code
+      .split(' ')
+      .filter((key) => key.trim() !== '')
+      .map((key) => SecretCodeManager.#normaliseKey(key));
+
+    const initialLength = this.#secretCodes.length;
+
+    // Filter out the matching code
+    this.#secretCodes = this.#secretCodes.filter(
+      (sc) => !this.#areCodeSequencesEqual(sc.code, codeToRemove)
+    );
+
+    const wasRemoved = this.#secretCodes.length < initialLength;
+
+    if (wasRemoved) {
+      this.#recalculateMaxBufferSize();
+    }
+
+    return wasRemoved;
+  }
+
+  /**
+   * Get the current sequence of keys being tracked
+   * @returns {string} Current key guess sequence
+   */
+  get currentGuess() {
+    return this.#currentGuess;
+  }
+
+  /**
+   * Clean up event listeners and internal state
+   */
+  destroy() {
+    if (this.#targetElement && this.#boundKeyDownHandler) {
+      this.#targetElement.removeEventListener('keydown', this.#boundKeyDownHandler);
+    }
+    this.#secretCodes = [];
+    this.#keyHistory = [];
+    this.#maxInputBufferSize = 0;
+    this.#currentGuess = '';
+  }
+
+  /**
+   * Check if a code string is valid
+   * @param {string} code - The code string to validate (e.g., 'up up b a')
+   * @returns {{isValid: boolean, error?: string}} Validation result with error message if invalid
+   */
+  isValidCode(code) {
+    if (typeof code !== 'string' || code.trim() === '') {
+      return { isValid: false, error: 'Code string must be a non-empty string.' };
+    }
+
+    const keys = code.split(' ').filter((key) => key.trim() !== '');
+
+    if (keys.length === 0) {
+      return { isValid: false, error: 'Code must contain at least one key.' };
+    }
+
+    for (const key of keys) {
+      try {
+        // See if it's valid
+        SecretCodeManager.#normaliseKey(key);
+      } catch (error) {
+        return {
+          isValid: false,
+          error: `Invalid key '${key}' in code. ${error.message}`,
+        };
+      }
+    }
+
+    return { isValid: true };
+  }
+
+  // Private methods
+  #handleKeyDown(event) {
+    // Skip if key is being held down
+    if (event.repeat) return;
+
+    // Normalise
+    const key = event.key;
+    const normalisedKey = SecretCodeManager.keyNameMap.get(key.toLowerCase()) || key;
+
+    // Update key history
+    this.#keyHistory.push(normalisedKey);
+    if (this.#keyHistory.length > this.#keyHistoryLimit) {
+      this.#keyHistory.shift();
+    }
+
+    // Update current guess
+    this.#currentGuess = this.#keyHistory.slice(-this.#maxInputBufferSize).join(' ');
+
+    // Check against all registered codes
+    for (const { code, callback } of this.#secretCodes) {
+      const currentSequence = this.#keyHistory.slice(-code.length);
+
+      if (
+        currentSequence.length === code.length &&
+        this.#areCodeSequencesEqual(currentSequence, code)
+      ) {
+        callback(event);
+        break; // One callback per key press
+      }
+    }
+  }
+
+  #areCodeSequencesEqual(seq1, seq2) {
+    if (seq1.length !== seq2.length) return false;
+    return seq1.every((key, i) => key === seq2[i]);
+  }
+
+  /**
+   * Get the current sequence of keys that have been pressed
+   * @returns {string} The current key sequence as a space-separated string
+   */
+  getCurrentGuess() {
+    return this.#currentGuess;
+  }
+
+  #recalculateMaxBufferSize() {
+    this.#maxInputBufferSize = this.#secretCodes.reduce(
+      (max, { code }) => Math.max(max, code.length),
+      0
+    );
+  }
+}
