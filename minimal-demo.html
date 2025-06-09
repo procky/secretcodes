@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>secretcodes.js demo</title>
+    <link rel="stylesheet" type="text/css" href="example/style/styles.css" />
+  </head>
+  <body>
+    <h1>secretcodes.js demo</h1>
+    <p>Type out 'qwerty' or the konami code. hint: start = return/enter key</p>
+    <p>Your input as you type:&nbsp;<span id="SCJS_showcode"></span></p>
+    
+
+    <script type="module">
+      import SecretCodeManager from './secretcodes.min.js';
+      
+      const secretManager = new SecretCodeManager(document);
+      
+      secretManager.addSecretCode('up up down down left right left right b a enter', () => {
+        alert('Konami code entered');
+      });
+
+      secretManager.addSecretCode('s e c r e t', () => {
+        alert('How did you find this?');
+      });
+
+      secretManager.addSecretCode('q w e r t y', () => {
+        alert('Trying every key?');
+      });
+
+      // Update the UI to show the current key sequence
+      document.addEventListener('keyup', () => {
+        const currentGuess = secretManager.getCurrentGuess();
+        document.getElementById('SCJS_showcode').textContent = currentGuess;
+      });
+    </script>
+  </body>
+</html>
